@@ -72,6 +72,22 @@ def main():
         types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
 
+    iters = 0
+    while True:
+        iters += 1
+        if iters > 20:
+            print(f"Maximum iterations (20) reached.")
+            sys.exit(1)
+        try:
+            fres = generate_content(client, messages, verbose_flag)
+            if fres:
+                print("Final response:")
+                print(fres)
+                break
+        except Exception as e:
+            print(f"Error in generate_content: {e}")
+
+def generate_content(client, messages, verbose_flag):
     response = client.models.generate_content(
         model = "gemini-2.0-flash-001", 
         contents = messages,
@@ -87,6 +103,11 @@ def main():
             print(f"Calling function: {function.name}{function.args}")
     else:
         return response.text
+
+    if response.candidates:
+        for candidate in response.candidates:
+            function_call_content = candidate.content
+            messages.append(function_call_content)
 
     if verbose_flag:
         print("--------------------")
@@ -108,6 +129,7 @@ def main():
         function_responses.append(function_call_result.parts[0]) 
     if not function_responses:
         raise Exception("no function responses generated, exiting.")
+    messages.append(types.Content(role="tool", parts=function_responses))
     
 
 if __name__ == "__main__": main()
